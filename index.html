@@ -72,12 +72,12 @@ const Ic = ({ n, s = 16, c = "currentColor", sw = 2 }) => (
 );
 
 const LOCATIONS = [
-  { id: "sb", label: "Saarbrücken", lat: 49.240, lng: 6.997 },
-  { id: "fra", label: "Frankfurt", lat: 50.110, lng: 8.682 },
-  { id: "ber", label: "Berlin", lat: 52.520, lng: 13.405 },
-  { id: "ham", label: "Hamburg", lat: 53.551, lng: 9.994 },
-  { id: "muc", label: "München", lat: 48.135, lng: 11.582 },
-  { id: "cgn", label: "Köln", lat: 50.938, lng: 6.960 },
+  { id: "sb",  label: "Saarbrücken", lat: 49.240, lng: 6.997 },
+  { id: "fra", label: "Frankfurt",   lat: 50.110, lng: 8.682 },
+  { id: "ber", label: "Berlin",      lat: 52.520, lng: 13.405 },
+  { id: "ham", label: "Hamburg",     lat: 53.551, lng: 9.994 },
+  { id: "muc", label: "München",     lat: 48.135, lng: 11.582 },
+  { id: "cgn", label: "Köln",        lat: 50.938, lng: 6.960 },
 ];
 const VEHICLES = ["VW ID.3","VW ID.4","Tesla Model 3","Tesla Model Y","Hyundai Ioniq 5","Kia EV6","Renault Zoe","Škoda Enyaq","BMW i4","Polestar 2","Mercedes EQB","Fiat 500e","Opel Corsa-e","Anderes / kein Fahrzeug"];
 
@@ -88,20 +88,65 @@ const PROVIDERS = {
   shell: { name: "Shell Recharge", short: "Shell" },
   ewego: { name: "EWE Go", short: "EWE Go" },
 };
-
-const PROFILE = { /* ... dein Original-PROFILE ... */ };
+const PROFILE = {
+  "EnBW":{adhoc:.69,enbw:.49,adac:.57,shell:.64,block:240}, "Aral pulse":{adhoc:.75,adac:.59,enbw:.61,shell:.64,block:45},
+  "Ionity":{adhoc:.79,enbw:.59,adac:.59,block:60}, "Allego":{adhoc:.68,enbw:.55,adac:.58,shell:.62,block:45},
+  "Shell Recharge":{adhoc:.72,shell:.49,enbw:.60,adac:.61,block:60}, "EWE Go":{adhoc:.65,ewego:.48,enbw:.59,adac:.60,block:180},
+  "Fastned":{adhoc:.69,enbw:.57,adac:.60,shell:.59,block:9999}, "Tesla":{adhoc:.60,enbw:.58,adac:.62,block:9999},
+  "TotalEnergies":{adhoc:.69,enbw:.59,adac:.62,block:60}, "Pfalzwerke":{adhoc:.64,enbw:.59,adac:.60,block:120},
+};
 const GENERIC = { adhoc:.69, enbw:.59, adac:.60, block:120 };
 
-function profileFor(op) { /* ... dein Original ... */ }
-function tariffsFromProfile(pf) { /* ... dein Original ... */ }
-function mk(id, op, venue, city, country, lat, lng, power, free, total) { /* ... dein Original ... */ }
+function profileFor(op) {
+  const n = (op || "").toLowerCase();
+  if (n.includes("enbw")) return PROFILE["EnBW"];
+  if (n.includes("ionity")) return PROFILE["Ionity"];
+  if (n.includes("aral")) return PROFILE["Aral pulse"];
+  if (n.includes("allego")) return PROFILE["Allego"];
+  if (n.includes("shell")) return PROFILE["Shell Recharge"];
+  if (n.includes("ewe")) return PROFILE["EWE Go"];
+  if (n.includes("fastned")) return PROFILE["Fastned"];
+  if (n.includes("tesla") || n.includes("supercharg")) return PROFILE["Tesla"];
+  if (n.includes("total")) return PROFILE["TotalEnergies"];
+  if (n.includes("pfalz")) return PROFILE["Pfalzwerke"];
+  return GENERIC;
+}
 
-const DATA = [ /* ... deine Original-Sample-Daten ... */ ];
+function tariffsFromProfile(pf) {
+  const block = pf.block ?? 120, tariffs = {};
+  Object.keys(pf).forEach((k) => { if (k !== "block") tariffs[k] = { kwh: pf[k], session: 0, blockAfter: block, blockPerMin: 0.10 }; });
+  return tariffs;
+}
 
-function haversine(a, b) { /* ... dein Original ... */ }
+function mk(id, op, venue, city, country, lat, lng, power, free, total) {
+  return { id, operator: op, venue, city, country, lat, lng, power, plug: "CCS", free, total, tariffs: tariffsFromProfile(PROFILE[op] || GENERIC) };
+}
+
+const DATA = [
+  mk("s1","EnBW","City","Saarbrücken","DE",49.240,6.997,300,3,4), mk("s2","Ionity","A6 Rasthof","Saarbrücken","DE",49.230,7.030,350,4,6),
+  mk("s3","EnBW","Marktplatz","Schmelz","DE",49.443,6.851,150,2,2), mk("s4","Aral pulse","Netto","Lebach","DE",49.411,6.911,150,1,2),
+  mk("s5","Shell Recharge","Globus","Dillingen","DE",49.356,6.727,150,1,2), mk("s6","EnBW","Alexanderplatz","Berlin","DE",52.521,13.413,300,5,8),
+  mk("s7","Tesla","Marzahn","Berlin","DE",52.545,13.560,250,6,12), mk("s8","EnBW","HafenCity","Hamburg","DE",53.541,9.999,300,2,6),
+  mk("s9","Aral pulse","Altona","Hamburg","DE",53.552,9.935,150,0,2), mk("s10","EnBW","Messe","München","DE",48.135,11.582,300,4,8),
+  mk("s11","Ionity","A9 Nord","München","DE",48.230,11.600,350,3,6), mk("s12","Aral pulse","Zentrum","Köln","DE",50.938,6.960,300,2,4),
+  mk("s13","EnBW","Messe","Frankfurt","DE",50.112,8.651,300,5,8), mk("s14","Ionity","A5 Süd","Frankfurt","DE",50.020,8.560,350,3,6),
+  mk("s15","Fastned","Flughafen","Düsseldorf","DE",51.278,6.767,300,3,6),
+];
+
+function haversine(a, b) {
+  const R = 6371, toR = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * toR, dLng = (b.lng - a.lng) * toR;
+  const s = Math.sin(dLat/2)**2 + Math.cos(a.lat*toR)*Math.cos(b.lat*toR)*Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
 const sessionMinutes = (kWh, power) => Math.max(1, Math.round((kWh / (Math.max(power,10) * 0.75)) * 60));
 const costOf = (t, kWh, power) => t.kwh*kWh + t.session + Math.max(0, sessionMinutes(kWh, power) - t.blockAfter) * t.blockPerMin;
-function rankTariffs(station, held, kWh) { /* ... dein Original ... */ }
+
+function rankTariffs(station, held, kWh) {
+  const ids = ["adhoc", ...Object.keys(PROVIDERS).filter((p) => p !== "adhoc" && held.includes(p))];
+  return ids.filter((id) => station.tariffs[id]).map((id) => ({ id, t: station.tariffs[id], total: costOf(station.tariffs[id], kWh, station.power) })).sort((a, b) => a.total - b.total);
+}
+
 const euro = (n) => "€ " + n.toFixed(2).replace(".", ",");
 const perKwh = (n) => n.toFixed(2).replace(".", ",") + " €";
 const fmtKm = (k) => (k < 10 ? k.toFixed(1) : Math.round(k)) + " km";
@@ -109,7 +154,31 @@ const priceColor = (k) => (k <= 0.54 ? C.green : k <= 0.66 ? C.gold : C.red);
 const gmapsDir = (s) => `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
 const gmapsEmbed = (s) => `https://www.google.com/maps?q=${s.lat},${s.lng}&z=15&output=embed`;
 
-function mapOcm(poi, loc) { /* ... dein Original ... */ }
+function mapOcm(poi, loc) {
+  const ai = poi.AddressInfo || {};
+  if (ai.Latitude == null || ai.Longitude == null) return null;
+  const conns = poi.Connections || [];
+  let power = 0; const plugCount = {};
+  conns.forEach((c) => { if (c.PowerKW && c.PowerKW > power) power = c.PowerKW; const tt = c.ConnectionType && c.ConnectionType.Title; if (tt) plugCount[tt] = (plugCount[tt] || 0) + 1; });
+  let plug = Object.keys(plugCount).sort((a, b) => plugCount[b] - plugCount[a])[0] || "—";
+  if (/ccs/i.test(plug)) plug = "CCS"; else if (/chademo/i.test(plug)) plug = "CHAdeMO"; else if (/type 2|mennekes/i.test(plug)) plug = "Typ 2";
+  const operator = (poi.OperatorInfo && poi.OperatorInfo.Title) ? poi.OperatorInfo.Title : "Unbekannt";
+  const lat = ai.Latitude, lng = ai.Longitude;
+  return { id: "ocm-" + poi.ID, operator, venue: ai.Title || "Ladepunkt", city: ai.Town || ai.StateOrProvince || "",
+    country: (ai.Country && ai.Country.ISOCode) || "DE", lat, lng, km: (ai.Distance != null) ? ai.Distance : haversine({lat:51.16, lng:10.45}, { lat, lng }),
+    power: Math.round(power) || 50, plug, freeNow: null, total: poi.NumberOfPoints || conns.length || 1,
+    usageCost: poi.UsageCost || "", tariffs: tariffsFromProfile(profileFor(operator)) };
+}
+
+async function fetchLive(loc) {
+  const url = "https://api.openchargemap.io/v3/poi/?output=json&countrycode=DE&latitude=" + loc.lat + "&longitude=" + loc.lng +
+    "&distance=35&distanceunit=KM&maxresults=80&compact=true&verbose=false" + (OCM_API_KEY ? "&key=" + encodeURIComponent(OCM_API_KEY) : "");
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("OCM HTTP " + res.status);
+  const data = await res.json();
+  if (!Array.isArray(data)) throw new Error("OCM payload");
+  return data.map((p) => mapOcm(p, loc)).filter(Boolean);
+}
 
 async function fetchLiveInBounds(bounds) {
   if (!OCM_API_KEY) return [];
@@ -120,7 +189,7 @@ async function fetchLiveInBounds(bounds) {
   const res = await fetch(url);
   if (!res.ok) throw new Error("OCM HTTP " + res.status);
   const data = await res.json();
-  return data.map(p => mapOcm(p, null)).filter(Boolean);
+  return data.map((p) => mapOcm(p, null)).filter(Boolean);
 }
 
 /* ============================ App ============================ */
@@ -142,15 +211,45 @@ function App() {
   const [reports, setReports] = useState({});
   const [alerts, setAlerts] = useState([]);
 
+  useEffect(() => {
+    let cancelled = false; setMode("loading");
+    fetchLive(loc).then((rows) => { if (cancelled) return;
+      if (rows && rows.length) { setLiveStations(rows); setMode("live"); setSynced(new Date()); }
+      else { setLiveStations(null); setMode("sample"); }
+    }).catch(() => { if (!cancelled) { setLiveStations(null); setMode("sample"); } });
+    return () => { cancelled = true; };
+  }, [loc]);
+
+  const refresh = () => setLoc({ ...loc });
+  const addReport = (stationId, price, cardId) => setReports((r) => ({ ...r, [stationId]: [{ price, cardId, ts: Date.now() }, ...(r[stationId] || [])] }));
+  const addAlert = (station, threshold) => setAlerts((a) => a.some((x) => x.stationId === station.id) ? a : [...a, { stationId: station.id, city: station.city, venue: station.venue, threshold }]);
+  const removeAlert = (stationId) => setAlerts((a) => a.filter((x) => x.stationId !== stationId));
+
+  const { list, totalMatches } = useMemo(() => {
+    let base;
+    if (mode === "live" && liveStations) base = liveStations.map((s) => ({ ...s, best: rankTariffs(s, held, kWh)[0] }));
+    else base = DATA.map((s) => ({ ...s, km: haversine(loc, s), freeNow: avail[s.id], best: rankTariffs(s, held, kWh)[0] }));
+    if (onlyFree) base = base.filter((s) => s.freeNow == null || s.freeNow > 0);
+    if (query.trim()) { const q = query.toLowerCase(); base = base.filter((s) => ((s.city||"")+s.operator+(s.venue||"")+(s.country||"")).toLowerCase().includes(q)); }
+    base.sort((a, b) => a.km - b.km);
+    const total = base.length; base = base.slice(0, 25);
+    const cheapest = base.reduce((m, s) => (!m || (s.best && s.best.t.kwh < m.best.t.kwh) ? s : m), null);
+    base = base.map((s) => ({ ...s, cheapNearby: cheapest && s.id === cheapest.id, reportCount: (reports[s.id] || []).length }));
+    return { list: base, totalMatches: total };
+  }, [held, kWh, loc, onlyFree, query, avail, mode, liveStations, reports]);
+
+  const activeStation = active ? (list.find((s) => s.id === active.id) || active) : null;
+  const font = { fontFamily: "'Inter', system-ui, sans-serif" };
+
   const openStation = (s) => { setActive(s); setScreen("detail"); };
 
   return (
-    <div style={{ fontFamily: "'Inter', system-ui, sans-serif", minHeight: "100vh", background: "#06080F", color: C.text }}>
-      <div style={{ maxWidth: 440, margin: "0 auto", minHeight: "100vh", background: C.bg, position: "relative", overflowX: "hidden" }}>
+    <div style={{ ...font, minHeight: "100vh", background: "#06080F", display: "flex", justifyContent: "center", color: C.text }}>
+      <div className="sc" style={{ width: "100%", maxWidth: 440, minHeight: "100vh", background: C.bg, position: "relative", overflowX: "hidden", paddingBottom: 92, backgroundImage: "radial-gradient(130% 50% at 50% -10%, #232A5533 0%, transparent 55%)" }}>
         {screen === "map" && <MapView held={held} kWh={kWh} open={openStation} />}
-        {screen === "list" && <ListView list={[]} totalMatches={0} mode={mode} kWh={kWh} setKWh={setKWh} loc={loc} setLoc={setLoc} onlyFree={onlyFree} setOnlyFree={setOnlyFree} query={query} setQuery={setQuery} held={held} synced={synced} refresh={() => {}} open={openStation} goAccount={() => setScreen("account")} />}
-        {screen === "detail" && active && <DetailView station={active} held={held} kWh={kWh} setKWh={setKWh} back={() => setScreen("map")} reports={[]} addReport={() => {}} alert={null} addAlert={() => {}} removeAlert={() => {}} user={user} goAccount={() => setScreen("account")} />}
-        {screen === "account" && <AccountView user={user} setUser={setUser} vehicle={vehicle} setVehicle={setVehicle} region={region} setRegion={setRegion} held={held} setHeld={setHeld} alerts={alerts} removeAlert={() => {}} back={() => setScreen("map")} />}
+        {screen === "list" && <ListView {...{ list, totalMatches, mode, kWh, setKWh, loc, setLoc, onlyFree, setOnlyFree, query, setQuery, held, synced, refresh, open: openStation, goAccount: () => setScreen("account") }} />}
+        {screen === "detail" && activeStation && <DetailView {...{ station: activeStation, held, kWh, setKWh, back: () => setScreen("map"), reports: reports[activeStation.id] || [], addReport, alert: alerts.find((a) => a.stationId === activeStation.id), addAlert, removeAlert, user, goAccount: () => setScreen("account") }} />}
+        {screen === "account" && <AccountView {...{ user, setUser, vehicle, setVehicle, region, setRegion, held, setHeld, alerts, removeAlert, back: () => setScreen("map") }} />}
         <TabBar screen={screen} onHome={() => setScreen("map")} onAccount={() => setScreen("account")} alertCount={alerts.length} />
       </div>
     </div>
@@ -170,54 +269,313 @@ function MapView({ held, kWh, open }) {
       maxZoom: 19
     }).addTo(map);
 
-    markersRef.current = L.markerClusterGroup({ maxClusterRadius: 60, showCoverageOnHover: false }).addTo(map);
+    markersRef.current = L.markerClusterGroup({
+      maxClusterRadius: 60,
+      showCoverageOnHover: false
+    }).addTo(map);
 
-    const load = async () => {
+    const loadStations = async () => {
       const b = map.getBounds();
-      const bounds = { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() };
+      const bounds = {
+        north: b.getNorth(),
+        south: b.getSouth(),
+        east: b.getEast(),
+        west: b.getWest()
+      };
       try {
         const data = await fetchLiveInBounds(bounds);
         markersRef.current.clearLayers();
         data.forEach(s => {
           const best = rankTariffs(s, held, kWh)[0];
-          const color = best ? (best.t.kwh <= 0.54 ? C.green : best.t.kwh <= 0.66 ? C.gold : C.red) : C.muted;
-          const marker = L.circleMarker([s.lat, s.lng], { radius: 7, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.9 })
-            .bindPopup(`<b>${s.venue}</b><br>${s.operator} • ${s.power} kW`);
+          const color = best ? priceColor(best.t.kwh) : C.muted;
+          const marker = L.circleMarker([s.lat, s.lng], {
+            radius: 7,
+            fillColor: color,
+            color: "#fff",
+            weight: 2,
+            fillOpacity: 0.9
+          }).bindPopup(`<b>${s.venue}</b><br>${s.operator} • ${s.power} kW`);
           marker.on('click', () => open(s));
           markersRef.current.addLayer(marker);
         });
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        console.error(e);
+      }
     };
 
-    load();
-    map.on('moveend', load);
-    return () => map.off('moveend', load);
+    loadStations();
+    map.on('moveend', loadStations);
+    return () => map.off('moveend', loadStations);
   }, [held, kWh]);
 
   return <div id="map" style={{ height: "100vh", width: "100%" }}></div>;
 }
 
-/* ListView, DetailView, AccountView, TabBar – stark vereinfacht für diesen ersten kompletten Build */
-function ListView({ open, goAccount }) {
-  return <div style={{ padding: 20, textAlign: "center", color: C.muted }}>Liste – wechsel zur Karte oben</div>;
-}
-function DetailView({ station, back }) {
+function ListView({ list, totalMatches, mode, kWh, setKWh, loc, setLoc, onlyFree, setOnlyFree, query, setQuery, held, synced, refresh, open, goAccount }) {
+  const time = synced.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  const requestGps = () => { if (!navigator.geolocation) return; navigator.geolocation.getCurrentPosition((p) => setLoc({ id: "gps", label: "Mein Standort", lat: p.coords.latitude, lng: p.coords.longitude }), () => {}, { timeout: 8000, enableHighAccuracy: true }); };
+  const statusLine = mode === "loading" ? "Live-Säulen werden geladen …" : mode === "live" ? `Live · Open Charge Map · ${totalMatches} Säulen in der Nähe` : "Beispieldaten – für Live-Betrieb Open-Charge-Map-Key eintragen";
+  const statusColor = mode === "live" ? C.green : mode === "loading" ? C.gold : C.muted;
   return (
-    <div style={{ padding: 20 }}>
-      <button onClick={back} style={{ color: C.muted }}>← Zurück zur Karte</button>
-      <h2>{station.venue}</h2>
-      <p>{station.operator} • {station.power} kW</p>
+    <div>
+      <div style={{ padding: "20px 18px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 10, background: `linear-gradient(135deg, ${C.gold}, ${C.violet})`, display: "grid", placeItems: "center" }}><Ic n="navigation" s={17} c="#0B1020" sw={2.6} /></div>
+          <span style={{ fontWeight: 700, fontSize: 20, letterSpacing: -0.4 }}>Ladekompass</span>
+        </div>
+        <button className="press" onClick={goAccount} style={{ display: "flex", alignItems: "center", gap: 6, background: C.glassHi, border: `1px solid ${C.border}`, padding: "7px 12px", borderRadius: 999, fontSize: 12.5, color: C.muted }}><Ic n="user" s={14} /></button>
+      </div>
+      <div style={{ padding: "0 18px 4px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, color: C.muted, fontSize: 12, marginBottom: 8 }}>
+          <Ic n="crosshair" s={13} c={C.green} /><span>Dein Standort</span>
+          <button className="press" onClick={refresh} style={{ marginLeft: "auto", fontSize: 11, color: C.muted, display: "inline-flex", alignItems: "center", gap: 5 }}><span className={mode === "loading" ? "spin" : ""} style={{ display: "inline-flex" }}><Ic n="refresh" s={11} /></span> {time}</button>
+        </div>
+        <div className="hsc" style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+          <button className="press" onClick={requestGps} style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6, background: loc.id === "gps" ? C.blue : C.glass, color: loc.id === "gps" ? "#0B1020" : C.blue, border: `1px solid ${loc.id === "gps" ? C.blue : C.border}` }}><Ic n="crosshair" s={13} /> Mein Standort</button>
+          {LOCATIONS.map((l) => { const on = l.id === loc.id; return <button key={l.id} className="press" onClick={() => setLoc(l)} style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600, background: on ? C.text : C.glass, color: on ? "#0B1020" : C.muted, border: `1px solid ${on ? C.text : C.border}` }}>{l.label}</button>; })}
+        </div>
+        <div style={{ fontSize: 10.5, color: statusColor, marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: 99, background: statusColor }} />{statusLine}</div>
+      </div>
+      <div style={{ padding: "12px 16px 0" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, background: C.glass, border: `1px solid ${C.border}`, borderRadius: 13, padding: "10px 13px" }}>
+          <Ic n="search" s={16} c={C.muted} />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Stadt oder Anbieter …" style={{ flex: 1, background: "none", border: "none", outline: "none", color: C.text, fontSize: 14.5 }} />
+          {query && <button onClick={() => setQuery("")}><Ic n="x" s={15} c={C.muted} /></button>}
+        </div>
+      </div>
+      <div style={{ padding: "14px 16px 6px", display: "flex", gap: 8 }}>
+        {[10, 30, 50].map((v) => <button key={v} className="press" onClick={() => setKWh(v)} style={{ flex: 1, padding: "9px 0", borderRadius: 11, fontSize: 13.5, fontWeight: 600, background: kWh === v ? C.gold : C.glass, color: kWh === v ? "#0B1020" : C.muted, border: `1px solid ${kWh === v ? C.gold : C.border}` }}>{v} kWh</button>)}
+        <button className="press" onClick={() => setOnlyFree((v) => !v)} style={{ flex: 1.2, padding: "9px 0", borderRadius: 11, fontSize: 13, fontWeight: 600, background: onlyFree ? C.green : C.glass, color: onlyFree ? "#0B1020" : C.muted, border: `1px solid ${onlyFree ? C.green : C.border}` }}>nur frei</button>
+      </div>
+      <div style={{ padding: "8px 16px 6px" }}>
+        {mode === "loading" && <div style={{ padding: "30px 20px", textAlign: "center", color: C.muted, fontSize: 13.5 }}>Lade Säulen …</div>}
+        {mode !== "loading" && list.length === 0 && <div style={{ padding: "34px 20px", textAlign: "center", borderRadius: 16, background: C.glass, border: `1px solid ${C.border}`, color: C.muted, fontSize: 13.5 }}>Keine Säule gefunden. Setz „nur frei“ zurück oder wähle einen anderen Standort.</div>}
+        {list.map((s, i) => <StationCard key={s.id} s={s} kWh={kWh} onClick={() => open(s)} delay={i * 0.02} />)}
+      </div>
+      {list.length > 0 && <p style={{ color: C.muted, fontSize: 11, textAlign: "center", paddingBottom: 6 }}>{list.length} von {totalMatches} · nächste zuerst</p>}
+      <p style={{ color: C.muted, fontSize: 10.5, textAlign: "center", padding: "0 30px 8px", lineHeight: 1.55 }}>Standorte live via Open Charge Map. Preise geschätzt bzw. von der Community gemeldet.</p>
     </div>
   );
 }
-function AccountView({ back }) {
-  return <div style={{ padding: 20 }}><button onClick={back}>← Zurück</button><p>Konto (Demo)</p></div>;
-}
-function TabBar({ screen, onHome, onAccount }) {
+
+function StationCard({ s, kWh, onClick, delay }) {
+  const best = s.best, col = best ? priceColor(best.t.kwh) : C.muted;
+  const known = s.freeNow != null, busy = known && s.freeNow === 0, availColor = known ? (busy ? C.red : C.green) : C.blue;
   return (
-    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(12,17,34,0.95)", backdropFilter: "blur(10px)", display: "flex", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-      <button onClick={onHome} style={{ flex: 1, padding: 12, color: screen === "map" ? C.gold : C.muted }}>Karte</button>
-      <button onClick={onAccount} style={{ flex: 1, padding: 12, color: screen === "account" ? C.gold : C.muted }}>Konto</button>
+    <button className="press rise" onClick={onClick} style={{ width: "100%", textAlign: "left", marginBottom: 10, padding: 15, borderRadius: 17, background: s.cheapNearby ? `linear-gradient(135deg, ${C.green}14, ${C.glass})` : C.glass, border: `1px solid ${s.cheapNearby ? C.green + "55" : C.border}`, display: "block", animationDelay: `${delay}s` }}>
+      {s.cheapNearby && <div style={{ fontSize: 10, fontWeight: 700, color: C.green, letterSpacing: 0.3, marginBottom: 8, display: "inline-flex", alignItems: "center", gap: 5 }}><Ic n="trend" s={12} /> GÜNSTIGSTE IN DER NÄHE</div>}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.25 }}>{s.city ? s.city + " · " : ""}{s.venue}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 7, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: C.violet, background: `${C.violet}22`, padding: "2px 8px", borderRadius: 999 }}>{s.operator}</span>
+            <span style={{ color: C.muted, fontSize: 12, display: "inline-flex", alignItems: "center", gap: 3 }}><Ic n="zap" s={11} />{s.power} kW</span>
+            <span style={{ color: C.muted, fontSize: 12, display: "inline-flex", alignItems: "center", gap: 3 }}><Ic n="pin" s={11} />{fmtKm(s.km)}</span>
+            {s.reportCount > 0 && <span style={{ color: C.blue, fontSize: 12, display: "inline-flex", alignItems: "center", gap: 3 }}><Ic n="people" s={11} />{s.reportCount}</span>}
+          </div>
+        </div>
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: col }}>{best ? perKwh(best.t.kwh) : "—"}</div>
+          <div style={{ fontSize: 10.5, color: C.muted, marginTop: 2 }}>{best ? (best.id === "adhoc" ? "Ad-hoc" : PROVIDERS[best.id].short) : ""}</div>
+        </div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: availColor, fontWeight: 600 }}><span style={{ width: 7, height: 7, borderRadius: 99, background: availColor, boxShadow: `0 0 8px ${availColor}` }} />{known ? (busy ? "belegt" : `${s.freeNow}/${s.total} frei`) : `${s.total} Ladepunkt${s.total === 1 ? "" : "e"}`}</span>
+        {best && <span style={{ fontSize: 12, color: C.muted }}>≈ {euro(best.total)} / {kWh} kWh</span>}
+      </div>
+    </button>
+  );
+}
+
+function DetailView({ station, held, kWh, setKWh, back, reports, addReport, alert, addAlert, removeAlert, user, goAccount }) {
+  const ranked = rankTariffs(station, held, kWh);
+  const known = station.freeNow != null, busy = known && station.freeNow === 0, availColor = known ? (busy ? C.red : C.green) : C.blue;
+  const mins = sessionMinutes(kWh, station.power);
+  const [showReport, setShowReport] = useState(false);
+  const [rPrice, setRPrice] = useState("");
+  const [rCard, setRCard] = useState("adhoc");
+  const [showAlert, setShowAlert] = useState(false);
+  const [thr, setThr] = useState(ranked[0] ? ranked[0].t.kwh.toFixed(2) : "0.55");
+  const commAvg = reports.length ? reports.reduce((a, x) => a + x.price, 0) / reports.length : null;
+  const cardOptions = ["adhoc", ...Object.keys(PROVIDERS).filter((p) => p !== "adhoc" && held.includes(p))];
+  const submitReport = () => { const v = parseFloat((rPrice || "").replace(",", ".")); if (!v || v <= 0 || v > 3) return; addReport(station.id, v, rCard); setRPrice(""); setShowReport(false); };
+  const inputStyle = { background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", color: C.text, fontSize: 14.5, outline: "none", width: "100%" };
+  return (
+    <div className="rise">
+      <div style={{ padding: "16px 16px 0" }}><button className="press" onClick={back} style={{ display: "flex", alignItems: "center", gap: 4, color: C.muted, fontSize: 14 }}><Ic n="chevronLeft" s={18} /> Zurück</button></div>
+      <div style={{ padding: "10px 20px 4px" }}>
+        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.4, lineHeight: 1.18 }}>{station.city ? station.city + " · " : ""}{station.venue}</div>
+        <div style={{ display: "flex", gap: 18, marginTop: 12 }}>
+          <div><div style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: 0.6 }}>Anbieter</div><div style={{ fontSize: 14.5, fontWeight: 600, marginTop: 3, color: C.violet }}>{station.operator}</div></div>
+          <div><div style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: 0.6 }}>Standort</div><div style={{ fontSize: 14.5, fontWeight: 600, marginTop: 3 }}>{station.venue}{station.city ? ", " + station.city : ""}</div></div>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
+          {[{ i: <Ic n="zap" s={12} />, t: `${station.power} kW · ${station.plug}` }, { i: <Ic n="pin" s={12} />, t: `${fmtKm(station.km)} · ${station.country}` }, { i: <span style={{ width: 7, height: 7, borderRadius: 99, background: availColor, display: "inline-block" }} />, t: known ? (busy ? "belegt" : `${station.freeNow}/${station.total} frei`) : `${station.total} Ladepunkte`, c: availColor }].map((b, i) => (
+            <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.glass, border: `1px solid ${C.border}`, padding: "6px 11px", borderRadius: 999, fontSize: 12.5, color: b.c || C.muted }}>{b.i}{b.t}</span>
+          ))}
+        </div>
+        {station.usageCost ? <div style={{ marginTop: 12, padding: "10px 13px", borderRadius: 12, background: C.glass, border: `1px solid ${C.border}`, fontSize: 12.5 }}><span style={{ color: C.muted }}>Preis laut Betreiber: </span>{station.usageCost}</div> : null}
+      </div>
+
+      <div style={{ padding: "16px 16px 4px" }}>
+        <div style={{ borderRadius: 16, overflow: "hidden", border: `1px solid ${C.border}`, background: "#0F1428" }}><iframe title="Google Maps" src={gmapsEmbed(station)} width="100%" height="180" style={{ border: 0, display: "block" }} loading="lazy" referrerPolicy="no-referrer-when-downgrade" /></div>
+        <a className="press" href={gmapsDir(station)} target="_blank" rel="noreferrer" style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 0", borderRadius: 13, background: C.glassHi, border: `1px solid ${C.border}`, color: C.text, fontWeight: 600, fontSize: 14.5 }}><Ic n="external" s={16} /> In Google Maps öffnen · Route</a>
+      </div>
+
+      <div style={{ padding: "14px 16px 4px" }}>
+        <div style={{ padding: 15, borderRadius: 16, background: `linear-gradient(135deg, ${C.blue}12, ${C.glass})`, border: `1px solid ${C.blue}44` }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}><Ic n="people" s={16} c={C.blue} /><span style={{ fontWeight: 600, fontSize: 14.5 }}>Community-Preis</span></div>
+            <button className="press" onClick={() => setShowReport((v) => !v)} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.blue, color: "#0B1020", fontWeight: 700, fontSize: 12.5, padding: "7px 12px", borderRadius: 999 }}><Ic n="plus" s={13} sw={2.6} /> Preis melden</button>
+          </div>
+          {commAvg != null ? (
+            <div style={{ marginTop: 10, display: "flex", alignItems: "baseline", gap: 10 }}>
+              <span style={{ fontSize: 22, fontWeight: 700, color: C.blue }}>{perKwh(commAvg)}</span>
+              <span style={{ fontSize: 12, color: C.muted }}>Ø aus {reports.length} Meldung{reports.length === 1 ? "" : "en"}</span>
+            </div>
+          ) : <div style={{ marginTop: 8, fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>Noch keine Meldung. Sei der Erste und teile, was du zuletzt hier bezahlt hast.</div>}
+          {showReport && (
+            <div className="rise" style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+              <input value={rPrice} onChange={(e) => setRPrice(e.target.value)} inputMode="decimal" placeholder="Preis pro kWh, z. B. 0,54" style={inputStyle} />
+              <select value={rCard} onChange={(e) => setRCard(e.target.value)} style={inputStyle}>
+                {cardOptions.map((id) => <option key={id} value={id}>{PROVIDERS[id].name}</option>)}
+              </select>
+              <button className="press" onClick={submitReport} style={{ padding: "12px 0", borderRadius: 11, background: C.blue, color: "#0B1020", fontWeight: 700, fontSize: 14 }}>Melden</button>
+              <div style={{ fontSize: 10.5, color: C.muted, lineHeight: 1.5 }}>Demo: Meldungen bleiben vorerst nur auf diesem Gerät. Mit angebundenem Backend sehen alle Nutzer die Community-Preise.</div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ padding: "8px 16px 4px" }}>
+        {alert ? (
+          <div style={{ padding: "13px 15px", borderRadius: 14, background: C.glass, border: `1px solid ${C.gold}55`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13.5 }}><Ic n="bell" s={15} c={C.gold} /> Alarm bei ≤ {perKwh(alert.threshold)}/kWh</span>
+            <button className="press" onClick={() => removeAlert(station.id)} style={{ color: C.red, fontSize: 12.5, fontWeight: 600 }}>Entfernen</button>
+          </div>
+        ) : (
+          <div>
+            <button className="press" onClick={() => setShowAlert((v) => !v)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 0", borderRadius: 13, background: C.glass, border: `1px solid ${C.border}`, color: C.text, fontWeight: 600, fontSize: 14 }}><Ic n="bell" s={15} c={C.gold} /> Preisalarm setzen</button>
+            {showAlert && (
+              <div className="rise" style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ fontSize: 12.5, color: C.muted }}>Benachrichtigen, wenn der Preis hier fällt auf höchstens:</div>
+                <input value={thr} onChange={(e) => setThr(e.target.value)} inputMode="decimal" placeholder="z. B. 0,49" style={inputStyle} />
+                <button className="press" onClick={() => { const v = parseFloat((thr || "").replace(",", ".")); if (v > 0) { addAlert(station, v); setShowAlert(false); } }} style={{ padding: "12px 0", borderRadius: 11, background: C.gold, color: "#0B1020", fontWeight: 700, fontSize: 14 }}>Alarm aktivieren</button>
+                {!user && <div style={{ fontSize: 10.5, color: C.muted, lineHeight: 1.5 }}>Tipp: Für Alarme per E-Mail brauchst du später ein Konto. <span onClick={goAccount} style={{ color: C.blue }}>Jetzt anlegen</span></div>}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div style={{ padding: "14px 16px 4px" }}>
+        <div style={{ fontSize: 11.5, color: C.muted, marginBottom: 8 }}>Beispiel-Ladung</div>
+        <div style={{ display: "flex", gap: 8 }}>{[10, 30, 50].map((v) => <button key={v} className="press" onClick={() => setKWh(v)} style={{ flex: 1, padding: "9px 0", borderRadius: 11, fontSize: 13.5, fontWeight: 600, background: kWh === v ? C.gold : C.glass, color: kWh === v ? "#0B1020" : C.muted, border: `1px solid ${kWh === v ? C.gold : C.border}` }}>{v} kWh</button>)}</div>
+        <div style={{ fontSize: 11.5, color: C.muted, marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}><Ic n="clock" s={12} /> ca. {mins} Min. bei {station.power} kW</div>
+      </div>
+      <div style={{ padding: "12px 16px 8px" }}>
+        <div style={{ fontSize: 11.5, color: C.muted, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><Ic n="trend" s={13} /> Dein Preis pro Anbieter <span style={{ opacity: .7 }}>(geschätzt)</span></div>
+        {ranked.map((r, i) => { const p = PROVIDERS[r.id], isBest = i === 0, save = ranked[ranked.length - 1].total - r.total; return (
+          <div key={r.id} className={isBest ? "best rise" : "rise"} style={{ marginBottom: 9, padding: "13px 15px", borderRadius: 14, animationDelay: `${i * 0.05}s`, background: isBest ? `linear-gradient(135deg, ${C.gold}1f, ${C.glassHi})` : C.glass, border: `1px solid ${isBest ? "transparent" : C.border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontWeight: 600, fontSize: 14.5 }}>{p.name}</span>{isBest && <span style={{ fontSize: 10, fontWeight: 700, color: "#0B1020", background: C.gold, padding: "2px 7px", borderRadius: 999 }}>BESTPREIS</span>}</div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 5 }}>{perKwh(r.t.kwh)}/kWh{r.t.session ? ` · ${euro(r.t.session)} Start` : ""}{mins > r.t.blockAfter ? " · +Blockier" : ""}</div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 17, fontWeight: 700, color: isBest ? C.goldHi : C.text }}>{euro(r.total)}</div>
+                {!isBest && save > 0.01 && <div style={{ fontSize: 10.5, color: C.red, marginTop: 2 }}>+{euro(save)}</div>}
+                {isBest && ranked.length > 1 && <div style={{ fontSize: 10.5, color: C.green, marginTop: 2 }}>günstigste</div>}
+              </div>
+            </div>
+          </div>
+        ); })}
+      </div>
+    </div>
+  );
+}
+
+function AccountView({ user, setUser, vehicle, setVehicle, region, setRegion, held, setHeld, alerts, removeAlert, back }) {
+  const [tab, setTab] = useState("login");
+  const [email, setEmail] = useState("");
+  const [pw, setPw] = useState("");
+  const toggleCard = (id) => setHeld((h) => (h.includes(id) ? h.filter((x) => x !== id) : [...h, id]));
+  const cardList = Object.entries(PROVIDERS).filter(([id]) => id !== "adhoc");
+  const inputStyle = { background: C.bg, border: `1px solid ${C.border}`, borderRadius: 11, padding: "12px 13px", color: C.text, fontSize: 15, outline: "none", width: "100%" };
+  const submit = () => { if (!email.includes("@") || pw.length < 4) return; setUser({ email }); };
+
+  return (
+    <div className="rise">
+      <div style={{ padding: "18px 16px 0" }}><button className="press" onClick={back} style={{ display: "flex", alignItems: "center", gap: 4, color: C.muted, fontSize: 14 }}><Ic n="chevronLeft" s={18} /> Zurück</button></div>
+
+      {!user ? (
+        <div style={{ padding: "12px 20px 4px" }}>
+          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.4 }}>{tab === "login" ? "Anmelden" : "Konto erstellen"}</div>
+          <p style={{ color: C.muted, fontSize: 13, lineHeight: 1.5, marginTop: 8 }}>Für Preisalarme und deine gespeicherten Präferenzen.</p>
+          <div style={{ display: "flex", gap: 6, background: C.glass, border: `1px solid ${C.border}`, borderRadius: 12, padding: 4, marginTop: 14 }}>
+            {[["login", "Anmelden"], ["register", "Registrieren"]].map(([k, l]) => <button key={k} className="press" onClick={() => setTab(k)} style={{ flex: 1, padding: "9px 0", borderRadius: 9, fontSize: 13.5, fontWeight: 600, background: tab === k ? C.text : "transparent", color: tab === k ? "#0B1020" : C.muted }}>{l}</button>)}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="E-Mail" style={inputStyle} />
+            <input value={pw} onChange={(e) => setPw(e.target.value)} type="password" placeholder="Passwort" style={inputStyle} />
+            <button className="press" onClick={submit} style={{ padding: "13px 0", borderRadius: 12, background: `linear-gradient(135deg, ${C.gold}, ${C.goldHi})`, color: "#0B1020", fontWeight: 700, fontSize: 15 }}>{tab === "login" ? "Anmelden" : "Konto erstellen"}</button>
+          </div>
+          <div style={{ marginTop: 14, padding: "11px 13px", borderRadius: 11, background: C.glass, border: `1px solid ${C.border}`, fontSize: 11, color: C.muted, lineHeight: 1.55 }}>
+            Demo-Anmeldung: Es wird noch nichts wirklich gespeichert oder geprüft. Echte Konten mit sicherem Passwort folgen, sobald ein Backend (z. B. Supabase) angebunden ist.
+          </div>
+        </div>
+      ) : (
+        <div style={{ padding: "12px 20px 4px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 46, height: 46, borderRadius: 999, background: `linear-gradient(135deg, ${C.gold}, ${C.violet})`, display: "grid", placeItems: "center" }}><Ic n="user" s={22} c="#0B1020" /></div>
+            <div style={{ minWidth: 0 }}><div style={{ fontSize: 16, fontWeight: 700 }}>Hallo!</div><div style={{ fontSize: 12.5, color: C.muted, overflow: "hidden", textOverflow: "ellipsis" }}>{user.email}</div></div>
+            <button className="press" onClick={() => setUser(null)} style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, color: C.muted, fontSize: 12.5 }}><Ic n="logout" s={15} /> Abmelden</button>
+          </div>
+
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.muted, margin: "20px 0 8px", display: "flex", alignItems: "center", gap: 7 }}><Ic n="car" s={15} /> Fahrzeug</div>
+          <select value={vehicle} onChange={(e) => setVehicle(e.target.value)} style={inputStyle}>{VEHICLES.map((v) => <option key={v} value={v}>{v}</option>)}</select>
+
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.muted, margin: "18px 0 8px", display: "flex", alignItems: "center", gap: 7 }}><Ic n="pin" s={15} /> Heimatregion</div>
+          <select value={region} onChange={(e) => setRegion(e.target.value)} style={inputStyle}>{LOCATIONS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}</select>
+
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.muted, margin: "18px 0 8px", display: "flex", alignItems: "center", gap: 7 }}><Ic n="card" s={15} /> Meine Ladekarten</div>
+          {cardList.map(([id, p]) => { const on = held.includes(id); return (
+            <button key={id} className="press" onClick={() => toggleCard(id)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 14px", marginBottom: 8, borderRadius: 12, background: C.glass, border: `1px solid ${on ? C.green + "66" : C.border}` }}>
+              <span style={{ fontWeight: 600, fontSize: 14 }}>{p.name}</span>
+              <span style={{ width: 22, height: 22, borderRadius: 7, display: "grid", placeItems: "center", background: on ? C.green : "transparent", border: `1.5px solid ${on ? C.green : C.muted}` }}>{on && <Ic n="check" s={14} c="#0B1020" sw={3} />}</span>
+            </button>
+          ); })}
+
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.muted, margin: "18px 0 8px", display: "flex", alignItems: "center", gap: 7 }}><Ic n="bell" s={15} /> Meine Preisalarme</div>
+          {alerts.length === 0 ? <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5, paddingBottom: 8 }}>Noch keine Alarme. Öffne eine Säule und tippe „Preisalarm setzen".</div> : alerts.map((a) => (
+            <div key={a.stationId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", marginBottom: 8, borderRadius: 12, background: C.glass, border: `1px solid ${C.border}` }}>
+              <div><div style={{ fontWeight: 600, fontSize: 13.5 }}>{a.city ? a.city + " · " : ""}{a.venue}</div><div style={{ fontSize: 11, color: C.gold, marginTop: 3 }}>≤ {perKwh(a.threshold)}/kWh</div></div>
+              <button className="press" onClick={() => removeAlert(a.stationId)} style={{ color: C.red, fontSize: 12.5, fontWeight: 600 }}>×</button>
+            </div>
+          ))}
+
+          <div style={{ marginTop: 14, marginBottom: 8, padding: "11px 13px", borderRadius: 11, background: C.glass, border: `1px solid ${C.border}`, fontSize: 11, color: C.muted, lineHeight: 1.55 }}>
+            Demo: Profil und Alarme bleiben nur in dieser Sitzung. Mit angebundenem Backend werden sie dauerhaft gespeichert und Alarme per E-Mail verschickt.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TabBar({ screen, onHome, onAccount, alertCount }) {
+  const Item = ({ icon, label, active, onClick, badge }) => (
+    <button className="press" onClick={onClick} style={{ flex: 1, position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "9px 0", color: active ? C.gold : C.muted }}>
+      {icon}<span style={{ fontSize: 10.5, fontWeight: active ? 600 : 400 }}>{label}</span>
+      {badge > 0 && <span style={{ position: "absolute", top: 4, right: "50%", marginRight: -22, background: C.red, color: "#fff", fontSize: 9, fontWeight: 700, minWidth: 15, height: 15, borderRadius: 99, display: "grid", placeItems: "center", padding: "0 3px" }}>{badge}</span>}
+    </button>
+  );
+  return (
+    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, display: "flex", justifyContent: "center" }}>
+      <div style={{ width: "100%", maxWidth: 440, display: "flex", background: "rgba(12,17,34,0.9)", backdropFilter: "blur(14px)", borderTop: `1px solid ${C.border}`, paddingBottom: 6 }}>
+        <Item icon={<Ic n="search" s={19} />} label="Finden" active={screen === "map" || screen === "list" || screen === "detail"} onClick={onHome} />
+        <Item icon={<Ic n="user" s={19} />} label="Konto" active={screen === "account"} onClick={onAccount} badge={alertCount} />
+      </div>
     </div>
   );
 }
@@ -226,3 +584,4 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 </script>
 </body>
 </html>
+  
